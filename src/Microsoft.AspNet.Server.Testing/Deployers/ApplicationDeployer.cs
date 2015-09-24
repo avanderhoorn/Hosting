@@ -18,6 +18,8 @@ namespace Microsoft.AspNet.Server.Testing
     {
         protected string ChosenRuntimePath { get; set; }
 
+        public string DnuPath { get; set; }
+
         protected string ChosenRuntimeName { get; set; }
 
         protected DeploymentParameters DeploymentParameters { get; private set; }
@@ -51,7 +53,7 @@ namespace Microsoft.AspNet.Server.Testing
 
             runtimePath = Regex.Replace(runtimePath, "dnx-(clr|coreclr)-win-(x86|x64)", replaceStr, RegexOptions.IgnoreCase);
             ChosenRuntimePath = Path.GetDirectoryName(runtimePath);
-
+            DnuPath = Path.Combine(ChosenRuntimePath, "dnu.cmd");
             var runtimeDirectoryInfo = new DirectoryInfo(ChosenRuntimePath);
             if (!runtimeDirectoryInfo.Exists)
             {
@@ -78,12 +80,11 @@ namespace Microsoft.AspNet.Server.Testing
                     DeploymentParameters.DnxRuntime,
                     DeploymentParameters.PublishWithNoSource ? "--no-source" : string.Empty);
 
-            var dnuPath = Path.Combine(ChosenRuntimePath, "dnu.cmd");
-            Logger.LogInformation("Executing command {dnu} {args}", dnuPath, parameters);
+            Logger.LogInformation("Executing command {dnu} {args}", DnuPath, parameters);
 
             var startInfo = new ProcessStartInfo
             {
-                FileName = dnuPath,
+                FileName = DnuPath,
                 Arguments = parameters,
                 UseShellExecute = false,
                 CreateNoWindow = true,
@@ -119,7 +120,7 @@ namespace Microsoft.AspNet.Server.Testing
         {
             try
             {
-                // We've originally published the application in a temp folder. We need to delete it. 
+                // We've originally published the application in a temp folder. We need to delete it.
                 Directory.Delete(DeploymentParameters.PublishedApplicationRootPath, true);
             }
             catch (Exception exception)

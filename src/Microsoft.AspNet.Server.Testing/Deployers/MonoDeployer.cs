@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -36,12 +37,20 @@ namespace Microsoft.AspNet.Server.Testing
                 throw new Exception("Runtime not detected on the machine.");
             }
 
+            var runtimeBinDir = new DirectoryInfo(runtimeBin);
+            ChosenRuntimePath = runtimeBinDir.FullName;
+            ChosenRuntimeName = runtimeBinDir.Parent.Name;
+            DnuPath = Path.Combine(ChosenRuntimePath, "dnu");
+            DeploymentParameters.DnxRuntime = ChosenRuntimeName;
+
             if (DeploymentParameters.PublishApplicationBeforeDeployment)
             {
                 // We use full path to runtime to pack.
-                DeploymentParameters.DnxRuntime = new DirectoryInfo(runtimeBin).Parent.FullName;
                 DnuPublish();
             }
+
+            DeploymentParameters.EnvironmentVariables
+                    .Add(new KeyValuePair<string, string>("DNX_APPBASE", DeploymentParameters.ApplicationPath));
 
             // Launch the host process.
             var hostExitToken = StartMonoHost();
@@ -62,29 +71,37 @@ namespace Microsoft.AspNet.Server.Testing
                 throw new InvalidOperationException("kestrel is the only valid ServerType for Mono");
             }
 
-            var dnxArgs = $"--appbase \"{DeploymentParameters.ApplicationPath}\" Microsoft.Dnx.ApplicationHost kestrel --server.urls {DeploymentParameters.ApplicationBaseUriHint}";
-
-            Logger.LogInformation("Executing command: dnx {dnxArgs}", dnxArgs);
+            var commandName = "kestrel";
+            var dnxPath = Path.Combine(ChosenRuntimePath, "dnx");
+            var dnxArgs = $"--appbase \"{DeploymentParameters.ApplicationPath}\" Microsoft.Dnx.ApplicationHost {commandName} --server.urls {DeploymentParameters.ApplicationBaseUriHint}";
+            Logger.LogInformation($"Executing {dnxPath} {dnxArgs}");
 
             var startInfo = new ProcessStartInfo
             {
-                FileName = "dnx",
+                FileName = dnxPath,
                 Arguments = dnxArgs,
                 UseShellExecute = false,
                 CreateNoWindow = true,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                // Trying a work around for https://github.com/aspnet/Hosting/issues/140.
                 RedirectStandardInput = true
             };
 
-            _hostProcess = Process.Start(startInfo);
+            AddEnvironmentVariablesToProcess(startInfo);
+
+            _hostProcess = new Process() { StartInfo = startInfo };
+            _hostProcess.ErrorDataReceived += (sender, dataArgs) => { Logger.LogError(dataArgs.Data ?? string.Empty); };
+            _hostProcess.OutputDataReceived += (sender, dataArgs) => { Logger.LogInformation(dataArgs.Data ?? string.Empty); };
             _hostProcess.EnableRaisingEvents = true;
             var hostExitTokenSource = new CancellationTokenSource();
             _hostProcess.Exited += (sender, e) =>
             {
-                Logger.LogError("Host process {processName} exited with code {exitCode}.", startInfo.FileName, _hostProcess.ExitCode);
                 TriggerHostShutdown(hostExitTokenSource);
             };
-
-            Logger.LogInformation("Started {0}. Process Id : {1}", _hostProcess.MainModule.FileName, _hostProcess.Id);
+            _hostProcess.Start();
+            _hostProcess.BeginErrorReadLine();
+            _hostProcess.BeginOutputReadLine();
 
             if (_hostProcess.HasExited)
             {
@@ -92,6 +109,7 @@ namespace Microsoft.AspNet.Server.Testing
                 throw new Exception("Failed to start host");
             }
 
+            Logger.LogInformation("Started {fileName}. Process Id : {processId}", startInfo.FileName, _hostProcess.Id);
             return hostExitTokenSource.Token;
         }
 
@@ -101,7 +119,7 @@ namespace Microsoft.AspNet.Server.Testing
 
             if (DeploymentParameters.PublishApplicationBeforeDeployment)
             {
-                CleanPublishedOutput();
+                //CleanPublishedOutput();
             }
 
             InvokeUserApplicationCleanup();
