@@ -72,11 +72,12 @@ namespace Microsoft.AspNet.Server.Testing
 
             var parameters =
                 string.Format(
-                    "publish {0} -o {1} --runtime {2} {3}",
+                    "publish {0} -o {1} --runtime {2} {3} --iis-command {4}",
                     DeploymentParameters.ApplicationPath,
                     DeploymentParameters.PublishedApplicationRootPath,
                     DeploymentParameters.DnxRuntime,
-                    DeploymentParameters.PublishWithNoSource ? "--no-source" : string.Empty);
+                    DeploymentParameters.PublishWithNoSource ? "--no-source" : string.Empty,
+                    DeploymentParameters.Command ?? "web");
 
             var dnuPath = Path.Combine(ChosenRuntimePath, "dnu.cmd");
             Logger.LogInformation("Executing command {dnu} {args}", dnuPath, parameters);
@@ -106,7 +107,6 @@ namespace Microsoft.AspNet.Server.Testing
 
             DeploymentParameters.ApplicationPath =
                 (DeploymentParameters.ServerType == ServerType.IISExpress ||
-                DeploymentParameters.ServerType == ServerType.IISNativeModule ||
                 DeploymentParameters.ServerType == ServerType.IIS) ?
                 Path.Combine(DeploymentParameters.PublishedApplicationRootPath, "wwwroot") :
                 Path.Combine(DeploymentParameters.PublishedApplicationRootPath, "approot", "src",

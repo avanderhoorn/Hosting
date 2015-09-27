@@ -47,7 +47,11 @@ namespace Microsoft.AspNet.Server.Testing
 
         private CancellationToken StartSelfHost()
         {
-            var commandName = DeploymentParameters.ServerType == ServerType.WebListener ? "web" : "kestrel";
+            var commandName = DeploymentParameters.Command;
+            if (string.IsNullOrEmpty(commandName))
+            {
+                commandName = DeploymentParameters.ServerType == ServerType.WebListener ? "web" : "kestrel";
+            }
             var dnxPath = Path.Combine(ChosenRuntimePath, "dnx.exe");
             var dnxArgs = $"--appbase \"{DeploymentParameters.ApplicationPath}\" Microsoft.Dnx.ApplicationHost {commandName} --server.urls {DeploymentParameters.ApplicationBaseUriHint}";
             Logger.LogInformation("Executing {dnxexe} {dnxArgs}", dnxPath, dnxArgs);
