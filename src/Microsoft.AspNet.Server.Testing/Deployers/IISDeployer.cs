@@ -94,7 +94,6 @@ namespace Microsoft.AspNet.Server.Testing
         private class IISApplication
         {
             private const string WebSiteName = "ASPNETTESTRUNS";
-            private const string Dotnet45RuntimeVersion = "v4.0.30319";
 
             private readonly ServerManager _serverManager = new ServerManager();
             private readonly DeploymentParameters _deploymentParameters;
@@ -151,7 +150,7 @@ namespace Microsoft.AspNet.Server.Testing
             private ApplicationPool CreateAppPool(string appPoolName)
             {
                 var applicationPool = _serverManager.ApplicationPools.Add(appPoolName);
-                applicationPool.ManagedRuntimeVersion = Dotnet45RuntimeVersion;
+                applicationPool.ManagedRuntimeVersion = string.Empty;
 
                 applicationPool.Enable32BitAppOnWin64 = (_deploymentParameters.RuntimeArchitecture == RuntimeArchitecture.x86);
                 _logger.LogInformation("Created {bit} application pool '{name}' with runtime version {runtime}.",
